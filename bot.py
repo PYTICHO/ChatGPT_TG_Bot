@@ -59,7 +59,7 @@ async def phone_handler(msg):
 
 
 # Команда CHOOSEAI
-@dp.message_handler(commands=["chooseAI"])
+@dp.message_handler(commands=["chooseai"])
 async def chooseAI_process(msg):
     #Залогинен ли пользователь
     user_id = msg.from_user.id
@@ -86,6 +86,7 @@ async def deletecontext_process(msg):
 
     # ID пользователя
     user_id = msg.from_user.id
+    #Залогинен ли пользователь
     user_exists = await user_logged(user_id)
 
 
@@ -162,43 +163,55 @@ async def qwestion_handler(msg):
 
     #Если залогиненны
     if user_exists:
-        #Если поле ai не пустое
+        #Если поле ai не None
         if ai_exist:
-            reply_msg = await msg.reply("👾Обрабатываю...")
-            ################################       ChatGPT Sender     ##############################################
 
 
-            # Сам вопрос
-            question = msg.text
+            #ChatGPT-3.5
+            if ai_exist == "ChatGPT-3.5":
+                reply_msg = await msg.reply("👻Обрабатываю...")
+                ################################       ChatGPT Sender     ##############################################
 
-            # Записываем вопрос в бд
-            if all_messages.get(user_id, False):
-                all_messages[user_id].append({"role": "user", "content": question})
+
+                # Сам вопрос
+                question = msg.text
+
+                # Записываем вопрос в бд
+                if all_messages.get(user_id, False):
+                    all_messages[user_id].append({"role": "user", "content": question})
+                else:
+                    all_messages[user_id] = [{"role": "user", "content": question}]
+
+
+                # Отправляем на обработку
+                loop = asyncio.get_running_loop()
+                completion = await loop.run_in_executor(None, sent_question, all_messages[user_id])
+
+
+                # Получаем ответ
+                answer = completion.choices[0].message.content
+
+                # Добавляем ответ в память, для запоминания ответа
+                all_messages[user_id].append({"role": "assistant", "content": answer})
+
+
+                # К tryes + 1
+                await tryes_plus_one(user_id)
+
+
+                await reply_msg.delete()
+                await msg.reply(answer)
+
+
+                ######################################################################################################
+
             else:
-                all_messages[user_id] = [{"role": "user", "content": question}]
+                await msg.answer("Извиняюсь, но этот функционал еще не введен🫤")
 
 
-            # Отправляем на обработку
-            loop = asyncio.get_running_loop()
-            completion = await loop.run_in_executor(None, sent_question, all_messages[user_id])
 
 
-            # Получаем ответ
-            answer = completion.choices[0].message.content
 
-            # Добавляем ответ в память, для запоминания ответа
-            all_messages[user_id].append({"role": "assistant", "content": answer})
-
-
-            # К tryes + 1
-            await tryes_plus_one(user_id)
-
-
-            await reply_msg.delete()
-            await msg.reply(answer)
-
-
-            ######################################################################################################
         #Если пустое то перенаправляем
         else:
             await chooseAI_process(msg)

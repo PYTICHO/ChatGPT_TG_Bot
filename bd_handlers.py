@@ -8,7 +8,7 @@ from config import *
 # Если нет таблицы, создаем ее
 async def create_table_if_not_exists():
     connection = await asyncpg.connect(user=user, password=password, database=db_name, host=host)
-    await connection.execute('CREATE TABLE IF NOT EXISTS users(phone VARCHAR(40) PRIMARY KEY, user_id VARCHAR(40), ai VARCHAR(40), tryes INT, subscribe INT)')
+    await connection.execute('CREATE TABLE IF NOT EXISTS users(phone VARCHAR(40) PRIMARY KEY, user_id VARCHAR(40), ai VARCHAR(40), tryes INT, wallet INT)')
     await connection.close()
 
 
@@ -43,7 +43,7 @@ async def ai_exists(user_id):
 
 
     if ai_exists != "None":
-        return True
+        return ai_exists
     
     return False
 
