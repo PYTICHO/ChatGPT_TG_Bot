@@ -79,6 +79,35 @@ async def chooseAI_process(msg):
 
 
 
+#Команда DELETECONTEXT
+@dp.message_handler(commands=["deletecontext"])
+async def deletecontext_process(msg):
+    global all_messages
+
+    # ID пользователя
+    user_id = msg.from_user.id
+    user_exists = await user_logged(user_id)
+
+
+
+    #Если пользователь зарегестрирован
+    if user_exists:
+        #Стираем данные
+        all_messages[user_id] = []
+        await msg.answer("Данные стерты😘")
+
+    # Если нет, перенаправляем на страницу регистрации
+    else:
+        await start_process(msg)
+
+
+
+    
+
+
+
+
+
 # Обработчик callback gpt_button
 @dp.callback_query_handler(text="gpt_button") #text - То, что отправили с кнопкой
 async def product_location(call):
@@ -121,6 +150,8 @@ Have fun!"""
 #Делаем запрос к AI, когда получаем любой текст, при этом мы должны быть залогиненны.
 @dp.message_handler(content_types=["text"])
 async def qwestion_handler(msg):
+    global all_messages
+
     # залогиненны ли мы:
     user_id = msg.from_user.id
     user_exists = await user_logged(user_id)
@@ -134,7 +165,7 @@ async def qwestion_handler(msg):
         #Если поле ai не пустое
         if ai_exist:
             reply_msg = await msg.reply("👾Обрабатываю...")
-            ################################       ChatGPT Sender    ##############################################
+            ################################       ChatGPT Sender     ##############################################
 
 
             # Сам вопрос
@@ -165,14 +196,13 @@ async def qwestion_handler(msg):
 
             await reply_msg.delete()
             await msg.reply(answer)
-            await msg.answer("🔽 Следущий вопрос: 🔽")
 
 
             ######################################################################################################
         #Если пустое то перенаправляем
         else:
             await chooseAI_process(msg)
-            
+
     # Если не залогиненны, перенаправляем на start
     else:
         await start_process(msg)
