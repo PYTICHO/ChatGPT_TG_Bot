@@ -1,8 +1,12 @@
-import openai, asyncio
+import openai, asyncio, logging
 from config import *
 from aiogram import Dispatcher, Bot, executor, types
 from bd_handlers import *
 from kbs import send_phone_kb, choose_ai_kb
+
+#Ловим ошибки
+logging.basicConfig(level=logging.INFO)
+
 
 bot = Bot(TGToken)
 dp = Dispatcher(bot)
@@ -41,17 +45,22 @@ async def start_process(msg):
 @dp.message_handler(content_types=types.ContentType.CONTACT)
 async def phone_handler(msg):
 
-    phone_number = msg.contact.phone_number
     user_id = msg.from_user.id
+
+    phone_number = msg.contact.phone_number
+    #Если номер телефона начинается с +, то убираем +
+    if str(phone_number).startswith("+"):
+        phone_number = phone_number[1:]
+
+
 
     #Регистрируем и входим 
     await add_or_check_phone(phone_number, user_id)
 
-
-    await msg.answer("Вы успешно вошли!", reply_markup=types.ReplyKeyboardRemove())
+    await msg.answer("🎆Вы успешно вошли!🎆", reply_markup=types.ReplyKeyboardRemove())
     
     #Выбор AI
-    await msg.answer("Выберите AI:", reply_markup=choose_ai_kb())
+    await msg.answer("Выберите AI🤖:", reply_markup=choose_ai_kb())
 
 
 
@@ -68,7 +77,7 @@ async def chooseAI_process(msg):
 
     #Если пользователь залогинен, выбираем AI
     if user_exists:
-        await msg.answer("Выберите AI:", reply_markup=choose_ai_kb())
+        await msg.answer("Выберите AI🤖:", reply_markup=choose_ai_kb())
 
     #Если не залогинен, то перенаправляем на регистрацию
     else:
