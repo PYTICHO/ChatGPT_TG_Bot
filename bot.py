@@ -1,7 +1,7 @@
 import openai, asyncio
 from config import *
 from aiogram import Dispatcher, Bot, executor, types
-from bd_handlers import create_table_if_not_exists, add_or_check_phone, user_logged, ai_field_update, ai_exists, tryes_plus_one
+from bd_handlers import *
 from kbs import send_phone_kb, choose_ai_kb
 
 bot = Bot(TGToken)
@@ -160,59 +160,66 @@ async def qwestion_handler(msg):
     #True если поле    ai   заполнено
     ai_exist = await ai_exists(user_id)
 
+    #Кол-во попыток(tryes) пользователя 
+    tryes = await get_user_tryes(user_id)
+
 
     #Если залогиненны
     if user_exists:
         #Если поле ai не None
         if ai_exist:
+            #Если попыток(tryes) меньше 10
+            if tryes < 10:
 
 
-            #ChatGPT-3.5
-            if ai_exist == "ChatGPT-3.5":
-                reply_msg = await msg.reply("👻Обрабатываю...")
-                ################################       ChatGPT Sender     ##############################################
+                #ChatGPT-3.5
+                if ai_exist == "ChatGPT-3.5":
+                    reply_msg = await msg.reply("👻Обрабатываю...")
+                    ################################       ChatGPT Sender     ##############################################
 
 
-                # Сам вопрос
-                question = msg.text
+                    # Сам вопрос
+                    question = msg.text
 
-                # Записываем вопрос в бд
-                if all_messages.get(user_id, False):
-                    all_messages[user_id].append({"role": "user", "content": question})
+                    # Записываем вопрос в бд
+                    if all_messages.get(user_id, False):
+                        all_messages[user_id].append({"role": "user", "content": question})
+                    else:
+                        all_messages[user_id] = [{"role": "user", "content": question}]
+
+
+                    # Отправляем на обработку
+                    loop = asyncio.get_running_loop()
+                    completion = await loop.run_in_executor(None, sent_question, all_messages[user_id])
+
+
+                    # Получаем ответ
+                    answer = completion.choices[0].message.content
+
+                    # Добавляем ответ в память, для запоминания ответа
+                    all_messages[user_id].append({"role": "assistant", "content": answer})
+
+
+                    # К tryes + 1
+                    await tryes_plus_one(user_id)
+
+
+                    await reply_msg.delete()
+                    await msg.reply(answer)
+
+
+                    ######################################################################################################
+
                 else:
-                    all_messages[user_id] = [{"role": "user", "content": question}]
+                    await msg.answer("Извиняюсь, но этот функционал еще не введен🫤")
 
 
-                # Отправляем на обработку
-                loop = asyncio.get_running_loop()
-                completion = await loop.run_in_executor(None, sent_question, all_messages[user_id])
 
-
-                # Получаем ответ
-                answer = completion.choices[0].message.content
-
-                # Добавляем ответ в память, для запоминания ответа
-                all_messages[user_id].append({"role": "assistant", "content": answer})
-
-
-                # К tryes + 1
-                await tryes_plus_one(user_id)
-
-
-                await reply_msg.delete()
-                await msg.reply(answer)
-
-
-                ######################################################################################################
-
+            #Если попыток больше 10
             else:
-                await msg.answer("Извиняюсь, но этот функционал еще не введен🫤")
+                await msg.answer("Максимум 10 запросов💀")
 
-
-
-
-
-        #Если пустое то перенаправляем
+        #Если поле ai пустое, то перенаправляем на выбор AI
         else:
             await chooseAI_process(msg)
 
