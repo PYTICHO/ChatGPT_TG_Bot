@@ -103,7 +103,7 @@ async def deletecontext_process(msg):
     #Если пользователь зарегестрирован
     if user_exists:
         #Стираем данные
-        all_messages[user_id] = []
+        all_messages[user_id] = {}
         await msg.answer("Данные стерты😘")
 
     # Если нет, перенаправляем на страницу регистрации
@@ -192,21 +192,21 @@ async def qwestion_handler(msg):
 
                         # Записываем вопрос в бд
                         if all_messages.get(user_id, False):
-                            all_messages[user_id].append({"role": "user", "content": question})
+                            all_messages[user_id][ai_exist].append({"role": "user", "content": question})
                         else:
-                            all_messages[user_id] = [{"role": "user", "content": question}]
+                            all_messages[user_id] = {ai_exist: [{"role": "user", "content": question}]}
 
 
                         # Отправляем на обработку
                         loop = asyncio.get_running_loop()
-                        completion = await loop.run_in_executor(None, sent_question, all_messages[user_id])
+                        completion = await loop.run_in_executor(None, sent_question, all_messages[user_id][ai_exist])
 
 
                         # Получаем ответ
                         answer = completion.choices[0].message.content
 
                         # Добавляем ответ в память, для запоминания ответа
-                        all_messages[user_id].append({"role": "assistant", "content": answer})
+                        all_messages[user_id][ai_exist].append({"role": "assistant", "content": answer})
 
 
                         # К tryes + 1
