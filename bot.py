@@ -1,4 +1,4 @@
-import openai, asyncio, logging
+import openai, asyncio, logging, more_itertools
 from config import *
 from aiogram import Dispatcher, Bot, executor, types
 from bd_handlers import *
@@ -24,6 +24,16 @@ def sent_question(messages):
         )
     
     return completion
+
+
+#Подсчет контекста
+#user_ai_context  -  [{'role': 'user', 'content': 'YOUR QUESTION'}, {'role': 'assistant', 'content': 'AI ANSWER'}]
+async def get_len_of_context(user_ai_context):
+    len_of_context = 0
+    for block in user_ai_context:
+        len_of_context += len(block["content"])
+
+    return len_of_context
 
 
 
@@ -182,17 +192,37 @@ async def qwestion_handler(msg):
                 #ChatGPT-3.5
                 if ai_exist == "ChatGPT-3.5":
                     reply_msg = await msg.reply("👻Обрабатываю...")
+
+
                     ################################       ChatGPT Sender     ##############################################
-
-
                     # Сам вопрос
                     question = msg.text
+                    dict_with_question = {"role": "user", "content": question}
 
-                    # Записываем вопрос в бд
+
+                    # Записываем вопрос в all_messages
                     if all_messages.get(user_id, False):
-                        all_messages[user_id][ai_exist].append({"role": "user", "content": question})
+                        #Длина контекста
+                        len_of_context = await get_len_of_context(all_messages[user_id][ai_exist]) + len(question)
+
+
+                        #Если контекста не больше  3950 символов, то добавляем в all_messages
+                        if len_of_context <= 3950:
+                            all_messages[user_id][ai_exist].append(dict_with_question)
+                        
+                        #Если контекст превышает лимит, то обнуляем контекст
+                        else:
+                            await msg.answer("""🫤По правилам использования ChatGPT количество символов в диалоге не может превышать 4000
+=> Я был вынужден забыть ваш диалог...""")
+                            
+                            all_messages[user_id] = {ai_exist: [dict_with_question]}
+
+
+                    #если нет в бд, то создаем для пользователя список вопросов
                     else:
-                        all_messages[user_id] = {ai_exist: [{"role": "user", "content": question}]}
+                        all_messages[user_id] = {ai_exist: [dict_with_question]}
+
+
 
 
                     # Отправляем на обработку
@@ -206,14 +236,17 @@ async def qwestion_handler(msg):
                     # Добавляем ответ в память, для запоминания ответа
                     all_messages[user_id][ai_exist].append({"role": "assistant", "content": answer})
 
-
                     # К tryes + 1
                     await tryes_plus_one(user_id)
 
 
                     #Отправляем ответ
                     await reply_msg.delete()
-                    await msg.reply(answer)
+
+                    #Разделяем ответ по 3300 символов, из-за вредности тг
+                    answer = list(more_itertools.sliced(answer, 3300))
+                    for ans in answer:
+                        await msg.reply(ans)
                     ######################################################################################################
 
                 #elif ai_exist =="....":
@@ -222,8 +255,9 @@ async def qwestion_handler(msg):
                     await msg.answer("Извиняюсь, но этот функционал еще не введен🫤")
 
             #При ошибке на сервере
-            except:
-                await msg.answer("Ошибка на сервере🫤\nОбратитесь в тех. поддержку")
+            except Exception as e:
+                await msg.answer("Ошибка на сервере🫤, либо неправильно задан вопрос")
+                print(e)
 
         #Если поле ai пустое, то перенаправляем на выбор AI
         else:
