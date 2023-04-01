@@ -170,64 +170,60 @@ async def qwestion_handler(msg):
     ai_exist = await ai_exists(user_id)
 
     #Кол-во попыток(tryes) пользователя 
-    tryes = await get_user_tryes(user_id)
+    # tryes = await get_user_tryes(user_id)   -     Пока не нужно
 
 
     #Если залогиненны
     if user_exists:
         #Если поле ai не None
         if ai_exist:
-            #Если попыток(tryes) меньше 10
-            if tryes < 10:
-                
-                try:
-                    #ChatGPT-3.5
-                    if ai_exist == "ChatGPT-3.5":
-                        reply_msg = await msg.reply("👻Обрабатываю...")
-                        ################################       ChatGPT Sender     ##############################################
+
+            try:
+                #ChatGPT-3.5
+                if ai_exist == "ChatGPT-3.5":
+                    reply_msg = await msg.reply("👻Обрабатываю...")
+                    ################################       ChatGPT Sender     ##############################################
 
 
-                        # Сам вопрос
-                        question = msg.text
+                    # Сам вопрос
+                    question = msg.text
 
-                        # Записываем вопрос в бд
-                        if all_messages.get(user_id, False):
-                            all_messages[user_id][ai_exist].append({"role": "user", "content": question})
-                        else:
-                            all_messages[user_id] = {ai_exist: [{"role": "user", "content": question}]}
-
-
-                        # Отправляем на обработку
-                        loop = asyncio.get_running_loop()
-                        completion = await loop.run_in_executor(None, sent_question, all_messages[user_id][ai_exist])
-
-
-                        # Получаем ответ
-                        answer = completion.choices[0].message.content
-
-                        # Добавляем ответ в память, для запоминания ответа
-                        all_messages[user_id][ai_exist].append({"role": "assistant", "content": answer})
-
-
-                        # К tryes + 1
-                        await tryes_plus_one(user_id)
-
-
-                        #Отправляем ответ
-                        await reply_msg.delete()
-                        await msg.reply(answer)
-                        ######################################################################################################
-
+                    # Записываем вопрос в бд
+                    if all_messages.get(user_id, False):
+                        all_messages[user_id][ai_exist].append({"role": "user", "content": question})
                     else:
-                        await msg.answer("Извиняюсь, но этот функционал еще не введен🫤")
+                        all_messages[user_id] = {ai_exist: [{"role": "user", "content": question}]}
 
-                #При ошибке на сервере
-                except:
-                    await msg.answer("Ошибка на сервере🫤\nОбратитесь в тех. поддержку")
 
-            #Если попыток больше 10
-            else:
-                await msg.answer("Максимум 10 запросов💀")
+                    # Отправляем на обработку
+                    loop = asyncio.get_running_loop()
+                    completion = await loop.run_in_executor(None, sent_question, all_messages[user_id][ai_exist])
+
+
+                    # Получаем ответ
+                    answer = completion.choices[0].message.content
+
+                    # Добавляем ответ в память, для запоминания ответа
+                    all_messages[user_id][ai_exist].append({"role": "assistant", "content": answer})
+
+
+                    # К tryes + 1
+                    await tryes_plus_one(user_id)
+
+
+                    #Отправляем ответ
+                    await reply_msg.delete()
+                    await msg.reply(answer)
+                    ######################################################################################################
+
+                #elif ai_exist =="....":
+
+                else:
+                    await msg.answer("Извиняюсь, но этот функционал еще не введен🫤")
+
+            #При ошибке на сервере
+            except:
+                await msg.answer("Ошибка на сервере🫤\nОбратитесь в тех. поддержку")
 
         #Если поле ai пустое, то перенаправляем на выбор AI
         else:
@@ -236,15 +232,6 @@ async def qwestion_handler(msg):
     # Если не залогиненны, перенаправляем на start
     else:
         await start_process(msg)
-
-
-
-
-
-
-
-
-
 
 
 
