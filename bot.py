@@ -188,76 +188,83 @@ async def qwestion_handler(msg):
         #Если поле ai не None
         if ai_exist:
 
-            try:
-                #ChatGPT-3.5
-                if ai_exist == "ChatGPT-3.5":
-                    reply_msg = await msg.reply("👻Обрабатываю...")
+            reply_msg = await msg.reply("👻Обрабатываю...")
+            #Делаю 2 попытки
+            for t in range(2):
+                try:
+                    #ChatGPT-3.5
+                    if ai_exist == "ChatGPT-3.5":
+
+                        ################################       ChatGPT Sender     ##############################################
+                        # Сам вопрос
+                        question = msg.text
+                        dict_with_question = {"role": "user", "content": question}
 
 
-                    ################################       ChatGPT Sender     ##############################################
-                    # Сам вопрос
-                    question = msg.text
-                    dict_with_question = {"role": "user", "content": question}
+                        # Записываем вопрос в all_messages
+                        if t == 0:
+                            if all_messages.get(user_id, False):
+                                #Длина контекста
+                                len_of_context = await get_len_of_context(all_messages[user_id][ai_exist]) + len(question)
 
 
-                    # Записываем вопрос в all_messages
-                    if all_messages.get(user_id, False):
-                        #Длина контекста
-                        len_of_context = await get_len_of_context(all_messages[user_id][ai_exist]) + len(question)
+                                #Если контекста не больше лимита символов, то добавляем в all_messages
+                                if len_of_context <= 5000:
+                                    all_messages[user_id][ai_exist].append(dict_with_question)
+                                
+                                #Если контекст превышает лимит, то обнуляем контекст
+                                else:
+                                    await msg.answer("""🫤По правилам использования ChatGPT количество символов в диалоге не может превышать 4000
+        => Я был вынужден забыть ваш диалог...
+        Можете продолжать общение👌""")
+                                    
+                                    all_messages[user_id] = {ai_exist: [dict_with_question]}
 
 
-                        #Если контекста не больше  3950 символов, то добавляем в all_messages
-                        if len_of_context <= 3950:
-                            all_messages[user_id][ai_exist].append(dict_with_question)
-                        
-                        #Если контекст превышает лимит, то обнуляем контекст
-                        else:
-                            await msg.answer("""🫤По правилам использования ChatGPT количество символов в диалоге не может превышать 4000
-=> Я был вынужден забыть ваш диалог...""")
+                            #если нет в бд, то создаем для пользователя список вопросов
+                            else:
+                                all_messages[user_id] = {ai_exist: [dict_with_question]}
                             
-                            all_messages[user_id] = {ai_exist: [dict_with_question]}
 
 
-                    #если нет в бд, то создаем для пользователя список вопросов
+                        # Отправляем на обработку
+                        loop = asyncio.get_running_loop()
+                        completion = await loop.run_in_executor(None, sent_question, all_messages[user_id][ai_exist])
+
+
+                        # Получаем ответ
+                        answer = completion.choices[0].message.content
+
+                        # Добавляем ответ в память, для запоминания ответа
+                        all_messages[user_id][ai_exist].append({"role": "assistant", "content": answer})
+
+                        # К tryes + 1
+                        await tryes_plus_one(user_id)
+
+                            
+
+                        #Разделяем ответ по 3300 символов, из-за вредности тг
+                        answer = list(more_itertools.sliced(answer, 3300))
+                        for ans in answer:
+                            await msg.reply(ans)
+
+                        #Если нет ошибок, то не делаем 2 попытку
+                        break
+                        ######################################################################################################
+
+                    #elif ai_exist =="....":
+
                     else:
-                        all_messages[user_id] = {ai_exist: [dict_with_question]}
+                        await msg.answer("Извиняюсь, но этот функционал еще не введен🫤")
 
+                #При ошибке на сервере
+                except Exception as e:
+                    if t == 1:
+                        await msg.answer("Ошибка на сервере🫤, либо попробуйте заново👌")
+                    print(e)
+                    continue
 
-
-
-                    # Отправляем на обработку
-                    loop = asyncio.get_running_loop()
-                    completion = await loop.run_in_executor(None, sent_question, all_messages[user_id][ai_exist])
-
-
-                    # Получаем ответ
-                    answer = completion.choices[0].message.content
-
-                    # Добавляем ответ в память, для запоминания ответа
-                    all_messages[user_id][ai_exist].append({"role": "assistant", "content": answer})
-
-                    # К tryes + 1
-                    await tryes_plus_one(user_id)
-
-
-                    #Отправляем ответ
-                    await reply_msg.delete()
-
-                    #Разделяем ответ по 3300 символов, из-за вредности тг
-                    answer = list(more_itertools.sliced(answer, 3300))
-                    for ans in answer:
-                        await msg.reply(ans)
-                    ######################################################################################################
-
-                #elif ai_exist =="....":
-
-                else:
-                    await msg.answer("Извиняюсь, но этот функционал еще не введен🫤")
-
-            #При ошибке на сервере
-            except Exception as e:
-                await msg.answer("Ошибка на сервере🫤, либо неправильно задан вопрос")
-                print(e)
+            await reply_msg.delete()
 
         #Если поле ai пустое, то перенаправляем на выбор AI
         else:
